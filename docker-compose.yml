@@ -1,0 +1,12 @@
+services:
+  video-compressor:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      MAX_UPLOAD_GB: "5"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./output:/app/output
+    restart: unless-stopped
