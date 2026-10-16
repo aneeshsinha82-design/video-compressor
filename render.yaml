@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: frame-compress
+    runtime: docker
+    plan: starter
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    disk:
+      name: frame-compress-data
+      mountPath: /var/data
+      sizeGB: 20
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: MAX_UPLOAD_GB
+        value: "5"
+      - key: UPLOAD_DIR
+        value: /var/data/uploads
+      - key: OUTPUT_DIR
+        value: /var/data/output
+      - key: REQUIRE_AUTH
+        value: "true"
+      - key: COMPRESSOR_USER
+        sync: false
+      - key: COMPRESSOR_PASSWORD
+        sync: false
