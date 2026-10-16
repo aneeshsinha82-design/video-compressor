@@ -20,6 +20,19 @@ docker compose up --build
 
 The default upload cap is 5 GiB. Change `MAX_UPLOAD_GB` in the environment or `docker-compose.yml` to increase it, for example to `10`. The machine still needs enough free disk space for the input and output at the same time, and enough CPU time for FFmpeg.
 
+## Deploy to Render
+
+A Render Blueprint is included in `render.yaml`. To deploy it:
+
+1. Open [Deploy to Render](https://render.com/deploy?repo=https://github.com/aneeshsinha82-design/video-compressor).
+2. Sign in to Render and connect your GitHub account if prompted.
+3. Review the service and persistent disk plan before creating it. The configuration requests a paid Starter web service and a 20 GB persistent disk; Render charges may apply.
+4. When prompted for `COMPRESSOR_USER` and `COMPRESSOR_PASSWORD`, set your own strong username and password. Do not publish these values or commit them to GitHub.
+5. Wait for the Docker build and deploy to finish. Open the generated Render URL; the browser should request the credentials.
+6. Check `https://YOUR-RENDER-HOST/api/health` to confirm the service is healthy. Then test with a small video before trying large uploads.
+
+The deployment enables HTTP Basic Authentication for the web app and keeps the health endpoint public for Render health checks. Use a strong unique password. Render's disk is mounted at `/var/data`, with uploads and output stored there. The 5 GB app limit does not override any hosting, proxy, timeout, or disk restrictions; test large uploads before relying on them. Do not expose the compressor without authentication because video encoding consumes CPU and disk.
+
 ## Quality profiles
 
 - **Quality first:** H.264 CRF 18, slow preset, AAC 192 kb/s.
@@ -45,8 +58,6 @@ The Extreme Size FFmpeg settings were run against a sample 1080 × 1920 H.264/AA
 
 This is one sample result, not a guarantee for other videos. The output was probed successfully and its resolution and duration were preserved. A smaller file can still have visible quality loss; compare the result before deleting the original. This command-level test does not by itself verify the full browser upload/download flow or 5 GB uploads.
 
-## Large uploads and deployment
+## Large uploads
 
-The server streams the incoming request to a temporary file and disables Node's request timeout so long uploads and encodes are possible. For public deployment, configure your reverse proxy/load balancer to allow the desired body size and long request duration. The hosting platform must support persistent disk, FFmpeg processes, and long-running HTTP requests. GitHub Pages and static-only hosts cannot run this backend. Use HTTPS and add authentication/rate limits before exposing it publicly; this starter is not intended as an open anonymous public service.
-
-`MAX_UPLOAD_GB` defaults to `5`. A 5 GB upload limit is not a promise that every host can accept 5 GB: proxy, platform, memory/disk quotas, and connection stability also matter.
+The server streams the incoming request to disk and disables Node's request timeout so long uploads and encodes are possible. The host must support persistent disk, FFmpeg processes, and long-running HTTP requests. A 5 GB upload limit is not a promise that every host can accept 5 GB: proxy, platform, disk quotas, and connection stability also matter. The browser currently receives the compressed file as a Blob, so very large output files can consume significant browser memory.
