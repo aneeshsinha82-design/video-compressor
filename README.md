@@ -25,8 +25,9 @@ The default upload cap is 5 GiB. Change `MAX_UPLOAD_GB` in the environment or `d
 - **Quality first:** H.264 CRF 18, slow preset, AAC 192 kb/s.
 - **Balanced:** H.264 CRF 22, slow preset, AAC 192 kb/s.
 - **Smaller file:** H.264 CRF 25, slow preset, AAC 128 kb/s.
+- **Extreme size:** H.265/HEVC CRF 30, slow preset, AAC 96 kb/s. This aims for much larger reductions and may reach 90% on suitable high-bitrate footage, but can visibly reduce detail and needs a server FFmpeg build with `libx265` enabled.
 
-CRF is a quality target, not a guaranteed file-size target. The compressor cannot guarantee mathematically identical quality or a smaller file for every source. Already highly compressed footage may shrink very little or even grow. For visually similar output, start with **Quality first**.
+CRF is a quality target, not a guaranteed file-size target. A 90% reduction means the output is only 10% of the original size; no encoder can promise that reduction while also preserving the same quality for every video. Already highly compressed footage may shrink very little or even grow. For visually similar output, start with **Quality first**. Use **Extreme size** only when file size matters more than visual fidelity.
 
 ## Large uploads and deployment
 
