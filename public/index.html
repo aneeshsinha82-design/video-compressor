@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#090b10"><title>Video Compressor — Studio</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar"><a class="brand" href="/"><span class="brand-mark">V</span><span>FRAME<span class="muted">/COMPRESS</span></span></a><span class="server-status"><i></i> LOCAL PROCESSING</span></header>
+    <section class="hero"><div class="eyebrow"><span class="eyebrow-line"></span> VIDEO OPTIMIZATION STUDIO</div><h1>Less size.<br><span>Same feeling.</span></h1><p class="intro">Compress large videos with FFmpeg and quality-first settings. Your files are processed by the server you run this on.</p></section>
+    <section class="workspace">
+      <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose or drop a video file">
+        <input id="file" type="file" accept="video/*,.mkv,.avi,.mov,.mp4,.webm,.m4v" hidden>
+        <div class="upload-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></div>
+        <h2>Drop your video here</h2><p>or <button id="browse" class="text-button" type="button">browse files</button></p><span class="file-note">MP4 · MOV · MKV · WEBM · AVI</span>
+      </div>
+      <div id="file-card" class="file-card hidden"><div class="file-symbol">▶</div><div class="file-info"><strong id="file-name">video.mp4</strong><span id="file-size">0 MB</span></div><button id="remove" class="remove" type="button" aria-label="Remove video">×</button></div>
+      <div class="settings"><div class="section-heading"><span>COMPRESSION PROFILE</span><span class="subtle">H.264 · MP4 output</span></div>
+        <div class="profiles"><label class="profile selected"><input type="radio" name="mode" value="quality" checked><span class="profile-top"><b>01</b><span class="check">✓</span></span><strong>Quality first</strong><small>CRF 18 · visually high quality</small></label><label class="profile"><input type="radio" name="mode" value="balanced"><span class="profile-top"><b>02</b><span class="check">✓</span></span><strong>Balanced</strong><small>CRF 22 · smaller output</small></label><label class="profile"><input type="radio" name="mode" value="smaller"><span class="profile-top"><b>03</b><span class="check">✓</span></span><strong>Smaller file</strong><small>CRF 25 · more compression</small></label></div>
+      </div>
+      <div id="progress-wrap" class="progress-wrap hidden"><div class="progress-label"><span id="progress-title">Uploading video…</span><span id="progress-pct">0%</span></div><div class="progress-track"><div id="progress" class="progress"></div></div><p id="progress-note">Keep this tab open while your video is processed.</p></div>
+      <button id="compress" class="primary" type="button" disabled><span>Compress video</span><span class="arrow">↗</span></button>
+      <div id="result" class="result hidden"></div><div id="error" class="error hidden" role="alert"></div>
+      <p class="privacy"><span>⌁</span> Files are temporarily stored on your server and deleted after download completes.</p>
+    </section>
+    <footer><span>BUILT FOR BIG FILES</span><span>UPLOAD LIMIT CONFIGURABLE · DEFAULT 5 GB</span></footer>
+  </main><script src="/app.js"></script>
+</body></html>
