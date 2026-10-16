@@ -6,8 +6,8 @@ const crypto = require('node:crypto');
 const { spawn } = require('node:child_process');
 
 const ROOT = __dirname;
-const UPLOAD_DIR = path.join(ROOT, 'uploads');
-const OUTPUT_DIR = path.join(ROOT, 'output');
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(ROOT, 'uploads');
+const OUTPUT_DIR = process.env.OUTPUT_DIR || path.join(ROOT, 'output');
 const PORT = Number(process.env.PORT || 3000);
 const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_GB || 5) * 1024 ** 3;
 const FFMPEG = process.env.FFMPEG_PATH || 'ffmpeg';
@@ -15,6 +15,26 @@ for (const dir of [UPLOAD_DIR, OUTPUT_DIR]) fs.mkdirSync(dir, { recursive: true 
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml' };
 function json(res, status, value) { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'X-Content-Type-Options': 'nosniff' }); res.end(JSON.stringify(value)); }
+function authorized(req) {
+  if (process.env.REQUIRE_AUTH !== 'true') return true;
+  const expectedUser = process.env.COMPRESSOR_USER || '';
+  const expectedPassword = process.env.COMPRESSOR_PASSWORD || '';
+  if (!expectedUser || !expectedPassword) return false;
+  const header = req.headers.authorization || '';
+  if (!header.startsWith('Basic ')) return false;
+  let decoded;
+  try { decoded = Buffer.from(header.slice(6), 'base64').toString('utf8'); } catch { return false; }
+  const separator = decoded.indexOf(':');
+  if (separator < 0) return false;
+  const user = Buffer.from(decoded.slice(0, separator));
+  const password = Buffer.from(decoded.slice(separator + 1));
+  const expectedUserBuffer = Buffer.from(expectedUser);
+  const expectedPasswordBuffer = Buffer.from(expectedPassword);
+  return user.length === expectedUserBuffer.length &&
+    password.length === expectedPasswordBuffer.length &&
+    crypto.timingSafeEqual(user, expectedUserBuffer) &&
+    crypto.timingSafeEqual(password, expectedPasswordBuffer);
+}
 function safeName(name) { return path.basename(String(name || 'video').replace(/[\x00-\x1f<>:"/\\|?*]/g, '_')).slice(0, 160) || 'video'; }
 function serveStatic(req, res) {
   const pathname = new URL(req.url, 'http://localhost').pathname;
@@ -39,8 +59,12 @@ function compress(input, output, mode) {
   });
 }
 const server = http.createServer(async (req, res) => {
-  if (req.method === 'GET' && !req.url.startsWith('/api/')) return serveStatic(req, res);
   if (req.method === 'GET' && req.url === '/api/health') return json(res, 200, { ok: true, maxUploadBytes: MAX_UPLOAD_BYTES, ffmpeg: FFMPEG });
+  if (!authorized(req)) {
+    res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="Frame / Compress", charset="UTF-8"', 'Cache-Control': 'no-store' });
+    return res.end('Authentication required');
+  }
+  if (req.method === 'GET' && !req.url.startsWith('/api/')) return serveStatic(req, res);
   if (req.method === 'POST' && req.url === '/api/compress') {
     const length = Number(req.headers['content-length'] || 0);
     if (length > MAX_UPLOAD_BYTES) { req.resume(); return json(res, 413, { error: 'File exceeds the ' + (process.env.MAX_UPLOAD_GB || 5) + ' GB upload limit.' }); }
