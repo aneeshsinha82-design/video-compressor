@@ -28,8 +28,9 @@ function serveStatic(req, res) {
 }
 function compress(input, output, mode) {
   return new Promise((resolve, reject) => {
-    const crf = mode === 'smaller' ? '25' : mode === 'balanced' ? '22' : '18';
-    const args = ['-hide_banner', '-nostdin', '-y', '-i', input, '-map', '0:v:0', '-map', '0:a?', '-c:v', 'libx264', '-preset', 'slow', '-crf', crf, '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', mode === 'smaller' ? '128k' : '192k', '-movflags', '+faststart', output];
+    const extreme = mode === 'extreme';
+    const crf = extreme ? '30' : mode === 'smaller' ? '25' : mode === 'balanced' ? '22' : '18';
+    const args = ['-hide_banner', '-nostdin', '-y', '-i', input, '-map', '0:v:0', '-map', '0:a?', '-c:v', extreme ? 'libx265' : 'libx264', '-preset', 'slow', '-crf', crf, '-pix_fmt', 'yuv420p', '-tag:v', extreme ? 'hvc1' : 'avc1', '-c:a', 'aac', '-b:a', extreme ? '96k' : mode === 'smaller' ? '128k' : '192k', '-movflags', '+faststart', output];
     const child = spawn(FFMPEG, args, { stdio: ['ignore', 'ignore', 'pipe'] });
     let stderr = '';
     child.stderr.on('data', chunk => { stderr = (stderr + chunk.toString()).slice(-12000); });
@@ -48,7 +49,7 @@ const server = http.createServer(async (req, res) => {
     catch { req.resume(); return json(res, 400, { error: 'Invalid file name.' }); }
     const ext = path.extname(originalName).toLowerCase();
     if (!['.mp4', '.mov', '.mkv', '.webm', '.avi', '.m4v', '.mpeg', '.mpg'].includes(ext)) { req.resume(); return json(res, 415, { error: 'Unsupported video extension.' }); }
-    const mode = ['quality', 'balanced', 'smaller'].includes(req.headers['x-compression-mode']) ? req.headers['x-compression-mode'] : 'quality';
+    const mode = ['quality', 'balanced', 'smaller', 'extreme'].includes(req.headers['x-compression-mode']) ? req.headers['x-compression-mode'] : 'quality';
     const id = crypto.randomUUID();
     const input = path.join(UPLOAD_DIR, id + ext);
     const output = path.join(OUTPUT_DIR, id + '.mp4');
