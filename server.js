@@ -33,8 +33,8 @@ function compress(input, output, mode) {
     const child = spawn(FFMPEG, args, { stdio: ['ignore', 'ignore', 'pipe'] });
     let stderr = '';
     child.stderr.on('data', chunk => { stderr = (stderr + chunk.toString()).slice(-12000); });
-    child.on('error', err => reject(new Error(\`Could not start FFmpeg. Install FFmpeg or set FFMPEG_PATH. \${err.message}\`)));
-    child.on('close', code => code === 0 ? resolve() : reject(new Error(\`FFmpeg exited with code \${code}. \${stderr.slice(-2500)}\`)));
+    child.on('error', err => reject(new Error('Could not start FFmpeg. Install FFmpeg or set FFMPEG_PATH. ' + err.message)));
+    child.on('close', code => code === 0 ? resolve() : reject(new Error('FFmpeg exited with code ' + code + '. ' + stderr.slice(-2500))));
   });
 }
 const server = http.createServer(async (req, res) => {
@@ -42,27 +42,29 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && req.url === '/api/health') return json(res, 200, { ok: true, maxUploadBytes: MAX_UPLOAD_BYTES, ffmpeg: FFMPEG });
   if (req.method === 'POST' && req.url === '/api/compress') {
     const length = Number(req.headers['content-length'] || 0);
-    if (length > MAX_UPLOAD_BYTES) { req.resume(); return json(res, 413, { error: \`File exceeds the \${process.env.MAX_UPLOAD_GB || 5} GB upload limit.\` }); }
-    const originalName = safeName(decodeURIComponent(req.headers['x-file-name'] || 'video.mp4'));
+    if (length > MAX_UPLOAD_BYTES) { req.resume(); return json(res, 413, { error: 'File exceeds the ' + (process.env.MAX_UPLOAD_GB || 5) + ' GB upload limit.' }); }
+    let originalName;
+    try { originalName = safeName(decodeURIComponent(req.headers['x-file-name'] || 'video.mp4')); }
+    catch { req.resume(); return json(res, 400, { error: 'Invalid file name.' }); }
     const ext = path.extname(originalName).toLowerCase();
     if (!['.mp4', '.mov', '.mkv', '.webm', '.avi', '.m4v', '.mpeg', '.mpg'].includes(ext)) { req.resume(); return json(res, 415, { error: 'Unsupported video extension.' }); }
     const mode = ['quality', 'balanced', 'smaller'].includes(req.headers['x-compression-mode']) ? req.headers['x-compression-mode'] : 'quality';
     const id = crypto.randomUUID();
-    const input = path.join(UPLOAD_DIR, \`\${id}\${ext}\`);
-    const output = path.join(OUTPUT_DIR, \`\${id}.mp4\`);
+    const input = path.join(UPLOAD_DIR, id + ext);
+    const output = path.join(OUTPUT_DIR, id + '.mp4');
     let bytes = 0;
     const out = fs.createWriteStream(input, { flags: 'wx' });
     req.on('data', chunk => { bytes += chunk.length; if (bytes > MAX_UPLOAD_BYTES) { req.destroy(new Error('Upload limit exceeded')); out.destroy(); } });
     req.pipe(out);
-    out.on('error', err => { fs.rm(input, { force: true }, () => {}); if (!res.headersSent) json(res, 500, { error: \`Upload failed: \${err.message}\` }); });
+    out.on('error', err => { fs.rm(input, { force: true }, () => {}); if (!res.headersSent) json(res, 500, { error: 'Upload failed: ' + err.message }); });
     out.on('finish', async () => {
       try {
         if (!bytes) throw new Error('The uploaded file is empty.');
         await compress(input, output, mode);
         const originalBytes = fs.statSync(input).size;
         const compressedBytes = fs.statSync(output).size;
-        const downloadName = \`\${path.parse(originalName).name}-compressed.mp4\`;
-        res.writeHead(200, { 'Content-Type': 'video/mp4', 'Content-Length': compressedBytes, 'Content-Disposition': \`attachment; filename="\${downloadName.replace(/"/g, '')}"\`, 'X-Original-Bytes': String(originalBytes), 'X-Compressed-Bytes': String(compressedBytes), 'X-Compression-Percent': String(Math.round((1 - compressedBytes / originalBytes) * 100)) });
+        const downloadName = path.parse(originalName).name + '-compressed.mp4';
+        res.writeHead(200, { 'Content-Type': 'video/mp4', 'Content-Length': compressedBytes, 'Content-Disposition': 'attachment; filename="' + downloadName.replace(/"/g, '') + '"', 'X-Original-Bytes': String(originalBytes), 'X-Compressed-Bytes': String(compressedBytes), 'X-Compression-Percent': String(Math.round((1 - compressedBytes / originalBytes) * 100)) });
         fs.createReadStream(output).pipe(res).on('finish', () => { fs.rm(input, { force: true }, () => {}); fs.rm(output, { force: true }, () => {}); });
       } catch (err) {
         fs.rm(input, { force: true }, () => {}); fs.rm(output, { force: true }, () => {});
@@ -76,4 +78,4 @@ const server = http.createServer(async (req, res) => {
 server.requestTimeout = 0;
 server.timeout = 0;
 server.headersTimeout = 60000;
-server.listen(PORT, '0.0.0.0', () => console.log(\`Video Compressor listening on http://localhost:\${PORT}; upload cap \${MAX_UPLOAD_BYTES} bytes\`));
+server.listen(PORT, '0.0.0.0', () => console.log('Video Compressor listening on http://localhost:' + PORT + '; upload cap ' + MAX_UPLOAD_BYTES + ' bytes'));
